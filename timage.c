@@ -26,77 +26,13 @@
 
 	Tape input is double-buffered, which typically makes a huge difference
 	in throughput.
-
-	timage itself runs only on a UNIX-based system, but the following
-	GetRecord function can be used in any Standard C application to
-	decode the tape-image file; GetCount is an auxiliary function that
-	the application need not invoke directly:
 */
 
 #include	<stdio.h>
-
-static long				// return # bytes in associated record
-GetCount( from, iname )
-	FILE		*from;		// input stream
-	const char	*iname;		// file name in case of read error
-	{
-	unsigned long	nc;		// decoded # bytes in record
-	static unsigned char	hdr[4];
-
-	if ( fread( hdr, 4, 1, from ) != 1 )
-		{
-		fprintf( stderr, "error reading \"%s\"\n", iname );
-		return -1L;		// special error indicator
-		}
-
-	nc = hdr[0] | ((unsigned long)hdr[1] << 8)
-	   | ((unsigned long)hdr[2] << 16) | ((unsigned long)hdr[3] << 24);
-
-	return (long)nc;
-	}
-
-long		// return # bytes in record; 0 => tape mark; -1 => error;
-		// 2 consecutive tape marks indicates end of tape
-GetRecord( from, iname, buffer )
-	FILE		*from;		// input stream
-	const char	*iname;		// file name in case of read error
-	char		*buffer;	// receives input data record
-	{
-	long		nc = GetCount( from, iname );	// read count header
-	char		dummy;		// receives padding byte, if any
-
-	if ( nc <= 0L )
-		return nc;		// tape mark or error
-
-	if ( fread( buffer, nc, 1, from ) != 1 )
-		{
-		fprintf( stderr, "error reading \"%s\"\n", iname );
-		return -1L;		// special error indicator
-		}
-
-	if ( nc % 2 != 0 && fread( &dummy, 1, 1, from ) != 1 )	// padding
-		{
-		fprintf( stderr, "error reading \"%s\"\n", iname );
-		return -1L;		// special error indicator
-		}
-
-	if ( GetCount( from, iname ) != nc )	// read count trailer
-		{
-		fprintf( stderr, "inconsistent byte count in \"%s\"\n", iname );
-		return -1L;		// special error indicator
-		}
-
-	return nc;
-	}
-
-#ifndef	lint
-static char	SCCS_id[] = "@(#)timage.c	1.5";
-#endif
-
-#include	<stdio.h>
-
-extern void	_exit(), exit(), perror();
-extern int	close(), fork(), open(), pipe(), read(), write();
+#include	<stdlib.h>
+#include	<fcntl.h>
+#include	<unistd.h>
+#include	<sys/wait.h>
 
 #ifndef MAXSIZE
 #define	MAXSIZE	(20*1024)
@@ -314,4 +250,3 @@ main( argc, argv )
 
 	return 0;
 	}
-
